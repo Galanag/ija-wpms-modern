@@ -1,0 +1,1766 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Activity {
+  id                                        Int                    @id @default(autoincrement())
+  yearId                                    Int
+  objectiveId                               Int?
+  projectId                                 Int?
+  orgUnitId                                 Int?
+  branchOrgUnitId                           Int?
+  employeeId                                Int?
+  code                                      String?
+  title                                     String
+  description                               String?
+  quarter                                   String?
+  startDate                                 DateTime?
+  dueDate                                   DateTime?
+  progress                                  Float                  @default(0)
+  implementationStatus                      String                 @default("not_started")
+  approvalStatus                            String                 @default("draft")
+  budget                                    Decimal                @default(0) @db.Decimal(18, 2)
+  weight                                    Float                  @default(1)
+  activityTemplateId                        Int?
+  workPlanId                                Int?
+  completedDate                             DateTime?
+  plannedQuantity                           Float?
+  actualQuantity                            Float?
+  unit                                      String?
+  priority                                  String                 @default("medium")
+  ActivityTemplate                          ActivityTemplate?      @relation(fields: [activityTemplateId], references: [id])
+  OrgUnit_Activity_branchOrgUnitIdToOrgUnit OrgUnit?               @relation("Activity_branchOrgUnitIdToOrgUnit", fields: [branchOrgUnitId], references: [id])
+  Employee                                  Employee?              @relation(fields: [employeeId], references: [id])
+  Objective                                 Objective?             @relation(fields: [objectiveId], references: [id])
+  OrgUnit_Activity_orgUnitIdToOrgUnit       OrgUnit?               @relation("Activity_orgUnitIdToOrgUnit", fields: [orgUnitId], references: [id])
+  Project                                   Project?               @relation(fields: [projectId], references: [id])
+  WorkPlan                                  WorkPlan?              @relation(fields: [workPlanId], references: [id])
+  PlanningYear                              PlanningYear           @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  BudgetRequest                             BudgetRequest[]
+  Deliverable                               Deliverable[]
+  EmployeePlanActivity                      EmployeePlanActivity[]
+  MonitoringVisit                           MonitoringVisit[]
+  SubTask                                   SubTask[]
+  TaskUpdate                                TaskUpdate[]
+
+  @@index([yearId, orgUnitId, branchOrgUnitId])
+  @@index([workPlanId])
+  @@index([activityTemplateId])
+}
+
+model AnnualPlanAllocation {
+  id               Int          @id @default(autoincrement())
+  yearId           Int
+  orgUnitId        Int?
+  name             String
+  allocationAmount Decimal      @default(0) @db.Decimal(18, 2)
+  notes            String?
+  approvalStatus   String       @default("draft")
+  currencyid       Int?
+  Currency         Currency?    @relation(fields: [currencyid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  OrgUnit          OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear     PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  Budget           Budget[]
+}
+
+model AnnualPlanRevision {
+  id           Int          @id @default(autoincrement())
+  yearId       Int
+  versionNo    Int
+  reason       String?
+  createdBy    Int?
+  createdAt    DateTime     @default(now())
+  status       String       @default("draft")
+  User         User?        @relation(fields: [createdBy], references: [id])
+  PlanningYear PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@unique([yearId, versionNo])
+}
+
+model Approval {
+  id                              Int           @id @default(autoincrement())
+  yearId                          Int?
+  entityType                      String
+  entityId                        Int
+  stepNo                          Int
+  stepName                        String
+  requiredRole                    String
+  status                          String        @default("pending")
+  requestedBy                     Int?
+  decidedBy                       Int?
+  decision                        String?
+  comment                         String?
+  requestedAt                     DateTime      @default(now())
+  decidedAt                       DateTime?
+  User_Approval_decidedByToUser   User?         @relation("Approval_decidedByToUser", fields: [decidedBy], references: [id])
+  User_Approval_requestedByToUser User?         @relation("Approval_requestedByToUser", fields: [requestedBy], references: [id])
+  PlanningYear                    PlanningYear? @relation(fields: [yearId], references: [id])
+
+  @@index([entityType, entityId, status])
+}
+
+model Asset {
+  id                  Int            @id @default(autoincrement())
+  assetNo             String?        @unique
+  assetName           String
+  categoryId          Int?
+  acquisitionDate     DateTime?
+  acquisitionCost     Decimal        @default(0) @db.Decimal(18, 2)
+  status              String         @default("active")
+  orgUnitId           Int?
+  custodianEmployeeId Int?
+  location            String?
+  AssetCategory       AssetCategory? @relation(fields: [categoryId], references: [id])
+  Employee            Employee?      @relation(fields: [custodianEmployeeId], references: [id])
+  OrgUnit             OrgUnit?       @relation(fields: [orgUnitId], references: [id])
+}
+
+model AssetCategory {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  active Boolean @default(true)
+  Asset  Asset[]
+}
+
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  entityType   String
+  entityId     Int
+  purpose      String?
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  storageKey   String   @unique
+  note         String?
+  createdBy    Int?
+  createdAt    DateTime @default(now())
+  User         User?    @relation(fields: [createdBy], references: [id])
+
+  @@index([entityType, entityId])
+}
+
+model Audit {
+  id           Int            @id @default(autoincrement())
+  yearId       Int
+  auditType    String
+  title        String
+  orgUnitId    Int?
+  plannedDate  DateTime?
+  actualDate   DateTime?
+  status       String         @default("planned")
+  OrgUnit      OrgUnit?       @relation(fields: [orgUnitId], references: [id])
+  PlanningYear PlanningYear   @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  AuditFinding AuditFinding[]
+}
+
+model AuditFinding {
+  id                   Int       @id @default(autoincrement())
+  auditId              Int
+  finding              String
+  severity             String    @default("medium")
+  recommendation       String?
+  responsibleOrgUnitId Int?
+  dueDate              DateTime?
+  status               String    @default("open")
+  Audit                Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  OrgUnit              OrgUnit?  @relation(fields: [responsibleOrgUnitId], references: [id])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  entity    String?
+  recordId  String?
+  createdAt DateTime @default(now())
+  oldValue  String?
+  newValue  String?
+  ipAddress String?
+  userAgent String?
+  metadata  String?
+  User      User?    @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([entity, recordId])
+  @@index([userId])
+  @@index([entity, recordId], map: "AuditLog_entityType_entityId_idx")
+}
+
+model Currency {
+  id                                                 Int                    @id @default(autoincrement())
+  code                                               String                 @unique @db.VarChar(3)
+  name                                               String                 @db.VarChar(100)
+  symbol                                             String                 @default("") @db.VarChar(10)
+  decimalPlaces                                      Int                    @default(2) @map("decimalplaces")
+  locale                                             String                 @default("en-US") @db.VarChar(20)
+  isActive                                           Boolean                @default(true) @map("isactive")
+  isDefault                                          Boolean                @default(false) @map("isdefault")
+  createdAt                                          DateTime               @default(now()) @map("createdat") @db.Timestamp(6)
+  updatedAt                                          DateTime               @default(now()) @updatedAt @map("updatedat") @db.Timestamp(6)
+  AnnualPlanAllocation                               AnnualPlanAllocation[]
+  Budget                                             Budget[]
+  BudgetLine                                         BudgetLine[]
+  BudgetRequest                                      BudgetRequest[]
+  CurrencyRate_CurrencyRate_fromcurrencyidToCurrency CurrencyRate[]         @relation("CurrencyRate_fromcurrencyidToCurrency")
+  CurrencyRate_CurrencyRate_tocurrencyidToCurrency   CurrencyRate[]         @relation("CurrencyRate_tocurrencyidToCurrency")
+  FinanceEntry                                       FinanceEntry[]
+  KpiActual                                          KpiActual[]
+  KpiPlan                                            KpiPlan[]
+  PlanningYear                                       PlanningYear[]
+  Project                                            Project[]
+}
+
+model Budget {
+  id                   Int                   @id @default(autoincrement())
+  yearId               Int
+  planAllocationId     Int?
+  orgUnitId            Int?
+  category             String
+  plannedAmount        Decimal               @default(0) @db.Decimal(18, 2)
+  revisedAmount        Decimal               @default(0) @db.Decimal(18, 2)
+  approvalStatus       String                @default("draft")
+  currencyId           Int                   @default(1) @map("currencyid")
+  currency             Currency              @relation(fields: [currencyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  OrgUnit              OrgUnit?              @relation(fields: [orgUnitId], references: [id])
+  AnnualPlanAllocation AnnualPlanAllocation? @relation(fields: [planAllocationId], references: [id])
+  PlanningYear         PlanningYear          @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  BudgetLine           BudgetLine[]
+  BudgetRequest        BudgetRequest[]
+  FinanceEntry         FinanceEntry[]
+
+  @@index([yearId, orgUnitId])
+  @@index([currencyId], map: "idx_budget_currency")
+}
+
+model BudgetLine {
+  id            Int            @id @default(autoincrement())
+  budgetId      Int
+  lineName      String
+  plannedAmount Decimal        @default(0) @db.Decimal(18, 2)
+  revisedAmount Decimal        @default(0) @db.Decimal(18, 2)
+  currencyId    Int            @default(1) @map("currencyid")
+  Budget        Budget         @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  currency      Currency       @relation(fields: [currencyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  FinanceEntry  FinanceEntry[]
+}
+
+model BudgetRequest {
+  id              Int          @id @default(autoincrement())
+  yearId          Int
+  budgetId        Int?
+  orgUnitId       Int?
+  activityId      Int?
+  requestDate     DateTime
+  purpose         String
+  requestedAmount Decimal      @default(0) @db.Decimal(18, 2)
+  approvedAmount  Decimal      @default(0) @db.Decimal(18, 2)
+  status          String       @default("draft")
+  approvalStatus  String       @default("draft")
+  requestedBy     Int?
+  currencyId      Int          @default(1) @map("currencyid")
+  Activity        Activity?    @relation(fields: [activityId], references: [id])
+  Budget          Budget?      @relation(fields: [budgetId], references: [id])
+  currency        Currency     @relation(fields: [currencyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  OrgUnit         OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  User            User?        @relation(fields: [requestedBy], references: [id])
+  PlanningYear    PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceFinding {
+  id                    Int                   @id @default(autoincrement())
+  requirementId         Int
+  finding               String
+  severity              String                @default("medium")
+  recommendation        String?
+  status                String                @default("open")
+  ComplianceRequirement ComplianceRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+}
+
+model ComplianceRequirement {
+  id                    Int                 @id @default(autoincrement())
+  yearId                Int
+  orgUnitId             Int?
+  category              String?
+  code                  String?
+  title                 String
+  authority             String?
+  responsibleEmployeeId Int?
+  dueDate               DateTime?
+  status                String              @default("open")
+  evidence              String?
+  complianceTemplateId  Int?
+  ComplianceFinding     ComplianceFinding[]
+  ComplianceTemplate    ComplianceTemplate? @relation(fields: [complianceTemplateId], references: [id])
+  OrgUnit               OrgUnit?            @relation(fields: [orgUnitId], references: [id])
+  Employee              Employee?           @relation(fields: [responsibleEmployeeId], references: [id])
+  PlanningYear          PlanningYear        @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@unique([title, yearId])
+  @@index([complianceTemplateId])
+}
+
+model CorrectiveAction {
+  id              Int          @id @default(autoincrement())
+  yearId          Int
+  sourceType      String
+  sourceId        Int?
+  ownerOrgUnitId  Int?
+  ownerEmployeeId Int?
+  title           String
+  description     String?
+  priority        String       @default("medium")
+  dueDate         DateTime?
+  status          String       @default("open")
+  completion      Float        @default(0)
+  Employee        Employee?    @relation(fields: [ownerEmployeeId], references: [id])
+  OrgUnit         OrgUnit?     @relation(fields: [ownerOrgUnitId], references: [id])
+  PlanningYear    PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Employee {
+  id                    Int                     @id @default(autoincrement())
+  employeeNo            String?                 @unique
+  fullName              String
+  jobTitle              String?
+  orgUnitId             Int?
+  email                 String?
+  phone                 String?
+  active                Boolean                 @default(true)
+  photoAttachmentId     Int?
+  createdAt             DateTime                @default(now())
+  Activity              Activity[]
+  Asset                 Asset[]
+  ComplianceRequirement ComplianceRequirement[]
+  CorrectiveAction      CorrectiveAction[]
+  OrgUnit               OrgUnit?                @relation(fields: [orgUnitId], references: [id])
+  EmployeeEvaluation    EmployeeEvaluation[]
+  EmployeePlan          EmployeePlan[]
+  HrAction              HrAction[]
+  KpiPlan               KpiPlan[]
+  LegalMatter           LegalMatter[]
+  Project               Project[]
+  Risk                  Risk[]
+  SubTask               SubTask[]
+  TrainingParticipant   TrainingParticipant[]
+  User                  User?
+}
+
+model EmployeeEvaluation {
+  id                  Int               @id @default(autoincrement())
+  yearId              Int
+  employeeId          Int
+  employeePlanId      Int?
+  orgUnitId           Int?
+  evaluatorId         Int?
+  periodKey           String?
+  planScore           Float             @default(0)
+  executionScore      Float             @default(0)
+  overallScore        Float             @default(0)
+  status              String            @default("draft")
+  approvalStatus      String            @default("draft")
+  planNotes           String?
+  executionNotes      String?
+  strengths           String?
+  areasForImprovement String?
+  targetsNextPeriod   String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime
+  Employee            Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  EmployeePlan        EmployeePlan?     @relation(fields: [employeePlanId], references: [id])
+  User                User?             @relation(fields: [evaluatorId], references: [id])
+  OrgUnit             OrgUnit?          @relation(fields: [orgUnitId], references: [id])
+  PlanningYear        PlanningYear      @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  EvaluationScore     EvaluationScore[]
+
+  @@unique([yearId, employeeId, periodKey])
+}
+
+model EmployeePlan {
+  id                   Int                    @id @default(autoincrement())
+  yearId               Int
+  employeeId           Int
+  orgUnitId            Int?
+  title                String
+  status               String                 @default("draft")
+  approvalStatus       String                 @default("draft")
+  EmployeeEvaluation   EmployeeEvaluation[]
+  Employee             Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  OrgUnit              OrgUnit?               @relation(fields: [orgUnitId], references: [id])
+  PlanningYear         PlanningYear           @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  EmployeePlanActivity EmployeePlanActivity[]
+  EmployeePlanKpi      EmployeePlanKpi[]
+
+  @@unique([yearId, employeeId])
+}
+
+model EmployeePlanActivity {
+  employeePlanId Int
+  activityId     Int
+  targetValue    Float?
+  weight         Float        @default(1)
+  Activity       Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  EmployeePlan   EmployeePlan @relation(fields: [employeePlanId], references: [id], onDelete: Cascade)
+
+  @@id([employeePlanId, activityId])
+}
+
+model EmployeePlanKpi {
+  employeePlanId Int
+  kpiPlanId      Int
+  targetValue    Float?
+  weight         Float        @default(1)
+  EmployeePlan   EmployeePlan @relation(fields: [employeePlanId], references: [id], onDelete: Cascade)
+  KpiPlan        KpiPlan      @relation(fields: [kpiPlanId], references: [id], onDelete: Cascade)
+
+  @@id([employeePlanId, kpiPlanId])
+}
+
+model Evaluation {
+  id              Int          @id @default(autoincrement())
+  yearId          Int
+  orgUnitId       Int?
+  title           String
+  evaluationType  String
+  periodKey       String
+  status          String       @default("draft")
+  score           Float?
+  findings        String?
+  recommendations String?
+  OrgUnit         OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear    PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model EvaluationCriterion {
+  id              Int               @id @default(autoincrement())
+  name            String
+  description     String?
+  weight          Float             @default(1)
+  category        String            @default("general")
+  active          Boolean           @default(true)
+  sortOrder       Int               @default(0)
+  EvaluationScore EvaluationScore[]
+
+  @@unique([name, category])
+}
+
+model EvaluationScore {
+  id                  Int                 @id @default(autoincrement())
+  evaluationId        Int
+  criterionId         Int
+  score               Float
+  comment             String?
+  EvaluationCriterion EvaluationCriterion @relation(fields: [criterionId], references: [id])
+  EmployeeEvaluation  EmployeeEvaluation  @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, criterionId])
+}
+
+model FinanceCategory {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  entryType    String
+  code         String?
+  description  String?
+  active       Boolean        @default(true)
+  FinanceEntry FinanceEntry[]
+}
+
+model FinanceEntry {
+  id                                            Int              @id @default(autoincrement())
+  yearId                                        Int
+  orgUnitId                                     Int?
+  branchOrgUnitId                               Int?
+  budgetId                                      Int?
+  budgetLineId                                  Int?
+  categoryId                                    Int?
+  reference                                     String?
+  transactionDate                               DateTime
+  entryType                                     String
+  categoryName                                  String?
+  amount                                        Decimal          @db.Decimal(18, 2)
+  status                                        String           @default("draft")
+  description                                   String?
+  createdBy                                     Int?
+  currencyId                                    Int              @default(1) @map("currencyid")
+  OrgUnit_FinanceEntry_branchOrgUnitIdToOrgUnit OrgUnit?         @relation("FinanceEntry_branchOrgUnitIdToOrgUnit", fields: [branchOrgUnitId], references: [id])
+  Budget                                        Budget?          @relation(fields: [budgetId], references: [id])
+  BudgetLine                                    BudgetLine?      @relation(fields: [budgetLineId], references: [id])
+  FinanceCategory                               FinanceCategory? @relation(fields: [categoryId], references: [id])
+  User                                          User?            @relation(fields: [createdBy], references: [id])
+  currency                                      Currency         @relation(fields: [currencyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  OrgUnit_FinanceEntry_orgUnitIdToOrgUnit       OrgUnit?         @relation("FinanceEntry_orgUnitIdToOrgUnit", fields: [orgUnitId], references: [id])
+  PlanningYear                                  PlanningYear     @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@index([transactionDate, yearId, orgUnitId, branchOrgUnitId])
+  @@index([currencyId], map: "idx_finance_entry_currency")
+}
+
+model Goal {
+  id              Int              @id @default(autoincrement())
+  yearId          Int
+  resultId        Int?
+  orgUnitId       Int?
+  code            String?
+  name            String
+  description     String?
+  weight          Float            @default(1)
+  approvalStatus  String           @default("draft")
+  OrgUnit         OrgUnit?         @relation(fields: [orgUnitId], references: [id])
+  StrategicResult StrategicResult? @relation(fields: [resultId], references: [id])
+  PlanningYear    PlanningYear     @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  Objective       Objective[]
+}
+
+model HrAction {
+  id           Int          @id @default(autoincrement())
+  yearId       Int
+  actionType   String
+  title        String
+  employeeId   Int?
+  orgUnitId    Int?
+  targetValue  Float        @default(0)
+  actualValue  Float        @default(0)
+  status       String       @default("planned")
+  notes        String?
+  Employee     Employee?    @relation(fields: [employeeId], references: [id])
+  OrgUnit      OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Kpi {
+  id          Int          @id @default(autoincrement())
+  code        String?      @unique
+  name        String
+  area        String?
+  definition  String?
+  formula     String?
+  unit        String?
+  frequency   String       @default("quarterly")
+  direction   String       @default("higher_is_better")
+  active      Boolean      @default(true)
+  categoryId  Int?
+  KpiCategory KpiCategory? @relation(fields: [categoryId], references: [id])
+  KpiPlan     KpiPlan[]
+}
+
+model KpiActual {
+  id                               Int       @id @default(autoincrement())
+  kpiPlanId                        Int
+  periodType                       String
+  periodKey                        String
+  actualValue                      Float?
+  comment                          String?
+  evidence                         String?
+  submittedBy                      Int?
+  verifiedBy                       Int?
+  approvalStatus                   String    @default("draft")
+  submittedAt                      DateTime?
+  verifiedAt                       DateTime?
+  currencyid                       Int?
+  Currency                         Currency? @relation(fields: [currencyid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  KpiPlan                          KpiPlan   @relation(fields: [kpiPlanId], references: [id], onDelete: Cascade)
+  User_KpiActual_submittedByToUser User?     @relation("KpiActual_submittedByToUser", fields: [submittedBy], references: [id])
+  User_KpiActual_verifiedByToUser  User?     @relation("KpiActual_verifiedByToUser", fields: [verifiedBy], references: [id])
+
+  @@unique([kpiPlanId, periodType, periodKey])
+}
+
+model KpiCategory {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  description String?
+  active      Boolean       @default(true)
+  Kpi         Kpi[]
+  KpiTemplate KpiTemplate[]
+
+  @@index([active])
+}
+
+model KpiPlan {
+  id              Int               @id @default(autoincrement())
+  yearId          Int
+  kpiId           Int
+  objectiveId     Int?
+  orgUnitId       Int?
+  ownerEmployeeId Int?
+  baselineValue   Float?
+  annualTarget    Float?
+  q1Target        Float?
+  q2Target        Float?
+  q3Target        Float?
+  q4Target        Float?
+  weight          Float             @default(1)
+  approvalStatus  String            @default("draft")
+  kpiTemplateId   Int?
+  currencyid      Int?
+  EmployeePlanKpi EmployeePlanKpi[]
+  KpiActual       KpiActual[]
+  Currency        Currency?         @relation(fields: [currencyid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Kpi             Kpi               @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  KpiTemplate     KpiTemplate?      @relation(fields: [kpiTemplateId], references: [id])
+  Objective       Objective?        @relation(fields: [objectiveId], references: [id])
+  OrgUnit         OrgUnit?          @relation(fields: [orgUnitId], references: [id])
+  Employee        Employee?         @relation(fields: [ownerEmployeeId], references: [id])
+  PlanningYear    PlanningYear      @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@unique([yearId, kpiId, orgUnitId])
+  @@index([kpiTemplateId])
+}
+
+model LegalMatter {
+  id                    Int          @id @default(autoincrement())
+  yearId                Int
+  matterType            String
+  title                 String
+  counterparty          String?
+  value                 Decimal      @default(0) @db.Decimal(18, 2)
+  responsibleEmployeeId Int?
+  status                String       @default("open")
+  nextAction            String?
+  dueDate               DateTime?
+  Employee              Employee?    @relation(fields: [responsibleEmployeeId], references: [id])
+  PlanningYear          PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model ManagementAction {
+  id             Int          @id @default(autoincrement())
+  yearId         Int
+  title          String
+  description    String?
+  ownerOrgUnitId Int?
+  dueDate        DateTime?
+  priority       String       @default("medium")
+  status         String       @default("open")
+  completion     Float        @default(0)
+  createdBy      Int?
+  User           User?        @relation(fields: [createdBy], references: [id])
+  OrgUnit        OrgUnit?     @relation(fields: [ownerOrgUnitId], references: [id])
+  PlanningYear   PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model ManagementReview {
+  id              Int               @id @default(autoincrement())
+  yearId          Int
+  reviewPeriod    String
+  reviewDate      DateTime
+  participants    Json?
+  status          String            @default("draft")
+  notes           String?
+  createdBy       Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  PlanningYear    PlanningYear      @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  User            User?             @relation(fields: [createdBy], references: [id])
+  ReviewFinding   ReviewFinding[]
+  ReviewDecision  ReviewDecision[]
+  ReviewAction    ReviewAction[]
+
+  @@index([yearId, status])
+  @@index([yearId])
+  @@index([status])
+}
+
+model ReviewFinding {
+  id               Int              @id @default(autoincrement())
+  reviewId         Int
+  title            String
+  description      String?
+  severity         String           @default("medium")
+  category         String           @default("kpi")
+  sourceInfo       String?
+  yearId           Int
+  createdAt        DateTime         @default(now())
+  ManagementReview ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  PlanningYear     PlanningYear     @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([yearId])
+  @@index([severity])
+  @@index([category])
+}
+
+model ReviewDecision {
+  id               Int               @id @default(autoincrement())
+  reviewId         Int
+  description      String?
+  decision         String            @default("approved")
+  dueDate          DateTime?
+  assignedTo       Int?
+  status           String            @default("open")
+  createdAt        DateTime          @default(now())
+  ManagementReview ManagementReview  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  User             User?             @relation(fields: [assignedTo], references: [id])
+
+  @@index([reviewId])
+  @@index([assignedTo])
+  @@index([status])
+}
+
+model ReviewAction {
+  id                  Int              @id @default(autoincrement())
+  reviewId            Int
+  title               String
+  description         String?
+  responsiblePersonId Int?
+  responsibleOrgUnitId Int?
+  dueDate             DateTime?
+  status              String           @default("open")
+  followUpStatus      String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  ManagementReview    ManagementReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  User                User?            @relation(fields: [responsiblePersonId], references: [id])
+  OrgUnit             OrgUnit?         @relation(fields: [responsibleOrgUnitId], references: [id])
+
+  @@index([reviewId])
+  @@index([responsiblePersonId])
+  @@index([responsibleOrgUnitId])
+  @@index([status])
+}
+
+model ManagerAssignment {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  orgUnitId Int
+  authority String
+  active    Boolean @default(true)
+  OrgUnit   OrgUnit @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  User      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgUnitId, authority])
+  @@index([orgUnitId, authority])
+}
+
+model MonitoringVisit {
+  id              Int          @id @default(autoincrement())
+  yearId          Int
+  orgUnitId       Int?
+  branchId        Int?
+  activityId      Int?
+  visitDate       DateTime
+  officer         String?
+  findings        String?
+  recommendations String?
+  status          String       @default("planned")
+  Activity        Activity?    @relation(fields: [activityId], references: [id])
+  OrgUnit         OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear    PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Objective {
+  id             Int          @id @default(autoincrement())
+  yearId         Int
+  goalId         Int
+  orgUnitId      Int?
+  code           String?
+  name           String
+  description    String?
+  targetValue    Float?
+  unit           String?
+  baselineValue  Float?
+  direction      String       @default("higher_is_better")
+  weight         Float        @default(1)
+  approvalStatus String       @default("draft")
+  Activity       Activity[]
+  KpiPlan        KpiPlan[]
+  Goal           Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  OrgUnit        OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear   PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model OrgUnit {
+  id                                                 Int                     @id @default(autoincrement())
+  parentId                                           Int?
+  unitType                                           String
+  name                                               String
+  code                                               String?               @unique
+  description                                        String?
+  active                                             Boolean                 @default(true)
+  createdAt                                          DateTime                @default(now())
+  Activity_Activity_branchOrgUnitIdToOrgUnit         Activity[]              @relation("Activity_branchOrgUnitIdToOrgUnit")
+  Activity_Activity_orgUnitIdToOrgUnit               Activity[]              @relation("Activity_orgUnitIdToOrgUnit")
+  AnnualPlanAllocation                               AnnualPlanAllocation[]
+  Asset                                              Asset[]
+  Audit                                              Audit[]
+  AuditFinding                                       AuditFinding[]
+  Budget                                             Budget[]
+  BudgetRequest                                      BudgetRequest[]
+  ComplianceRequirement                              ComplianceRequirement[]
+  CorrectiveAction                                   CorrectiveAction[]
+  Employee                                           Employee[]
+  EmployeeEvaluation                                 EmployeeEvaluation[]
+  EmployeePlan                                       EmployeePlan[]
+  Evaluation                                         Evaluation[]
+  FinanceEntry_FinanceEntry_branchOrgUnitIdToOrgUnit FinanceEntry[]          @relation("FinanceEntry_branchOrgUnitIdToOrgUnit")
+  FinanceEntry_FinanceEntry_orgUnitIdToOrgUnit       FinanceEntry[]          @relation("FinanceEntry_orgUnitIdToOrgUnit")
+  Goal                                               Goal[]
+  HrAction                                           HrAction[]
+  KpiPlan                                            KpiPlan[]
+   ManagementAction                                  ManagementAction[]
+   ReviewAction                                      ReviewAction[]
+   ManagerAssignment                                  ManagerAssignment[]
+  MonitoringVisit                                    MonitoringVisit[]
+  Objective                                          Objective[]
+  OrgUnit                                            OrgUnit?                @relation("OrgUnitToOrgUnit", fields: [parentId], references: [id])
+  other_OrgUnit                                      OrgUnit[]               @relation("OrgUnitToOrgUnit")
+  Procurement                                        Procurement[]
+  Project                                            Project[]
+  Property                                           Property[]
+  Report                                             Report[]
+  ResearchStudy                                      ResearchStudy[]
+  Risk                                               Risk[]
+  RiskReview                                         RiskReview[]
+  TourismRecord                                      TourismRecord[]
+  Training                                           Training[]
+  User                                       User[]
+  WorkPlan                                   WorkPlan[]
+  BranchFocusAreas                           BranchFocusArea[] @relation("BranchFocusAreas")
+
+  @@index([parentId])
+  @@index([unitType, active])
+}
+
+model PeriodDefinition {
+  id           Int          @id @default(autoincrement())
+  yearId       Int
+  periodType   String
+  periodKey    String
+  startDate    DateTime
+  endDate      DateTime
+  label        String?
+  active       Boolean      @default(true)
+  PlanningYear PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@unique([yearId, periodType, periodKey])
+}
+
+model Plan {
+  id                                       Int               @id @default(autoincrement())
+  yearId                                   Int
+  orgUnitId                                Int?
+  name                                     String
+  description                              String?
+  workflowStateId                          Int               @default(1)
+  ownerId                                  Int?
+  ownerRoleId                              Int?
+  version                                  Int               @default(1)
+  isCurrent                                Boolean           @default(true)
+  parentPlanId                             Int?
+  copiedFromPlanId                         Int?
+  previousYearPlanId                       Int?
+  fiscalYearStart                          Int?
+  planningType                             String            @default("annual")
+  notes                                    String?
+  submittedBy                              Int?
+  submittedAt                              DateTime?
+  approvedBy                               Int?
+  approvedAt                               DateTime?
+  closedBy                                 Int?
+  closedAt                                 DateTime?
+  archivedBy                               Int?
+  archivedAt                               DateTime?
+  createdAt                                DateTime          @default(now())
+  updatedAt                                DateTime
+  User_Plan_approvedByToUser               User?             @relation("Plan_approvedByToUser", fields: [approvedBy], references: [id])
+  User_Plan_archivedByToUser               User?             @relation("Plan_archivedByToUser", fields: [archivedBy], references: [id])
+  User_Plan_closedByToUser                 User?             @relation("Plan_closedByToUser", fields: [closedBy], references: [id])
+  Plan_Plan_copiedFromPlanIdToPlan         Plan?             @relation("Plan_copiedFromPlanIdToPlan", fields: [copiedFromPlanId], references: [id])
+  other_Plan_Plan_copiedFromPlanIdToPlan   Plan[]            @relation("Plan_copiedFromPlanIdToPlan")
+  User_Plan_ownerIdToUser                  User?             @relation("Plan_ownerIdToUser", fields: [ownerId], references: [id])
+  Plan_Plan_parentPlanIdToPlan             Plan?             @relation("Plan_parentPlanIdToPlan", fields: [parentPlanId], references: [id])
+  other_Plan_Plan_parentPlanIdToPlan       Plan[]            @relation("Plan_parentPlanIdToPlan")
+  Plan_Plan_previousYearPlanIdToPlan       Plan?             @relation("Plan_previousYearPlanIdToPlan", fields: [previousYearPlanId], references: [id])
+  other_Plan_Plan_previousYearPlanIdToPlan Plan[]            @relation("Plan_previousYearPlanIdToPlan")
+  User_Plan_submittedByToUser              User?             @relation("Plan_submittedByToUser", fields: [submittedBy], references: [id])
+  PlanWorkflowState                        PlanWorkflowState @relation(fields: [workflowStateId], references: [id])
+  PlanningYear                             PlanningYear      @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  PlanCopyConfig                           PlanCopyConfig[]
+  PlanVersion                              PlanVersion[]
+
+  @@unique([yearId, version])
+  @@index([isCurrent])
+  @@index([orgUnitId])
+  @@index([ownerId])
+  @@index([workflowStateId])
+  @@index([yearId])
+}
+
+model PlanCopyConfig {
+  id                       Int      @id @default(autoincrement())
+  sourcePlanId             Int
+  targetPlanId             Int
+  copyStrategicStructure   Boolean  @default(false)
+  copyGoals                Boolean  @default(true)
+  copyObjectives           Boolean  @default(true)
+  copyActivities           Boolean  @default(true)
+  copyProjects             Boolean  @default(true)
+  copyKpis                 Boolean  @default(true)
+  copyBudgets              Boolean  @default(false)
+  copyRisks                Boolean  @default(false)
+  resetTargets             Boolean  @default(true)
+  resetProgress            Boolean  @default(true)
+  copyResponsibleUnits     Boolean  @default(false)
+  copyResponsibleEmployees Boolean  @default(false)
+  createdBy                Int?
+  createdAt                DateTime @default(now())
+  Plan                     Plan     @relation(fields: [sourcePlanId], references: [id], onDelete: Cascade)
+
+  @@unique([sourcePlanId, targetPlanId])
+  @@index([sourcePlanId])
+}
+
+model PlanVersion {
+  id              Int      @id @default(autoincrement())
+  planId          Int
+  version         Int
+  changeType      String
+  changeNote      String?
+  changedBy       Int?
+  changedAt       DateTime @default(now())
+  stateSnapshot   Json?
+  contentSnapshot Json?
+  User            User?    @relation(fields: [changedBy], references: [id])
+  Plan            Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, version])
+  @@index([planId])
+}
+
+model PlanWorkflowState {
+  id                                                                           Int                      @id @default(autoincrement())
+  code                                                                         String                   @unique
+  name                                                                         String
+  description                                                                  String?
+  order                                                                        Int
+  category                                                                     String
+  requiresApproval                                                             Boolean                  @default(false)
+  approverRole                                                                 String?
+  editable                                                                     Boolean                  @default(true)
+  allowCopy                                                                    Boolean                  @default(false)
+  isInitial                                                                    Boolean                  @default(false)
+  isTerminal                                                                   Boolean                  @default(false)
+  createdAt                                                                    DateTime                 @default(now())
+  updatedAt                                                                    DateTime
+  Plan                                                                         Plan[]
+  PlanWorkflowTransition_PlanWorkflowTransition_fromStateIdToPlanWorkflowState PlanWorkflowTransition[] @relation("PlanWorkflowTransition_fromStateIdToPlanWorkflowState")
+  PlanWorkflowTransition_PlanWorkflowTransition_toStateIdToPlanWorkflowState   PlanWorkflowTransition[] @relation("PlanWorkflowTransition_toStateIdToPlanWorkflowState")
+
+  @@index([category, order])
+}
+
+model PlanWorkflowTransition {
+  id                                                                      Int               @id @default(autoincrement())
+  fromStateId                                                             Int
+  toStateId                                                               Int
+  action                                                                  String
+  actionLabel                                                             String
+  requiresRole                                                            String?
+  requiresComment                                                         Boolean           @default(false)
+  createdAt                                                               DateTime          @default(now())
+  PlanWorkflowState_PlanWorkflowTransition_fromStateIdToPlanWorkflowState PlanWorkflowState @relation("PlanWorkflowTransition_fromStateIdToPlanWorkflowState", fields: [fromStateId], references: [id], onDelete: Cascade)
+  PlanWorkflowState_PlanWorkflowTransition_toStateIdToPlanWorkflowState   PlanWorkflowState @relation("PlanWorkflowTransition_toStateIdToPlanWorkflowState", fields: [toStateId], references: [id], onDelete: Cascade)
+
+  @@unique([fromStateId, toStateId, action])
+  @@index([fromStateId])
+  @@index([toStateId])
+}
+
+model PlanningYear {
+  id                    Int                     @id @default(autoincrement())
+  year                  Int                     @unique
+  label                 String
+  status                String                  @default("draft")
+  startDate             DateTime?
+  endDate               DateTime?
+  createdAt             DateTime                @default(now())
+  currencyId            Int                     @default(1) @map("currencyid")
+  Activity              Activity[]
+  AnnualPlanAllocation  AnnualPlanAllocation[]
+  AnnualPlanRevision    AnnualPlanRevision[]
+  Approval              Approval[]
+  Audit                 Audit[]
+  Budget                Budget[]
+  BudgetRequest         BudgetRequest[]
+  ComplianceRequirement ComplianceRequirement[]
+  CorrectiveAction      CorrectiveAction[]
+  EmployeeEvaluation    EmployeeEvaluation[]
+  EmployeePlan          EmployeePlan[]
+  Evaluation            Evaluation[]
+  FinanceEntry          FinanceEntry[]
+  Goal                  Goal[]
+  HrAction              HrAction[]
+  KpiPlan               KpiPlan[]
+  LegalMatter           LegalMatter[]
+   ManagementAction      ManagementAction[]
+   ManagementReview      ManagementReview[]
+   ReviewFinding         ReviewFinding[]
+   MonitoringVisit       MonitoringVisit[]
+  Objective             Objective[]
+  PeriodDefinition      PeriodDefinition[]
+  Plan                  Plan[]
+  currency              Currency                @relation(fields: [currencyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  PlanningYearConfig    PlanningYearConfig?
+  Procurement           Procurement[]
+  Project               Project[]
+  Report                Report[]
+  ResearchStudy         ResearchStudy[]
+  Risk                  Risk[]
+  RiskReview            RiskReview[]
+  rolloverJobsAsSource  RolloverJob[]           @relation("RolloverJob_sourceYearIdToPlanningYear")
+  rolloverJobsAsTarget  RolloverJob[]           @relation("RolloverJob_targetYearIdToPlanningYear")
+  StrategicResult       StrategicResult[]
+  TourismRecord         TourismRecord[]
+  Training              Training[]
+  WorkPlan              WorkPlan[]
+
+  @@index([currencyId], map: "idx_planning_year_currency")
+}
+
+model PlanningYearConfig {
+  id                 Int          @id @default(autoincrement())
+  yearId             Int          @unique
+  allowPlanning      Boolean      @default(true)
+  planningStartDate  DateTime?
+  planningEndDate    DateTime?
+  reviewStartDate    DateTime?
+  reviewEndDate      DateTime?
+  approvalRequired   Boolean      @default(true)
+  approverRoleId     Int?
+  executionStartDate DateTime?
+  executionEndDate   DateTime?
+  closureStartDate   DateTime?
+  closureEndDate     DateTime?
+  activePlanId       Int?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime
+  PlanningYear       PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@index([yearId])
+}
+
+model Procurement {
+  id              Int          @id @default(autoincrement())
+  yearId          Int
+  orgUnitId       Int?
+  requestNo       String?
+  item            String
+  category        String?
+  estimatedAmount Decimal      @default(0) @db.Decimal(18, 2)
+  approvedAmount  Decimal      @default(0) @db.Decimal(18, 2)
+  supplier        String?
+  requestDate     DateTime?
+  dueDate         DateTime?
+  status          String       @default("draft")
+  approvalStatus  String       @default("draft")
+  requestedBy     Int?
+  OrgUnit         OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  User            User?        @relation(fields: [requestedBy], references: [id])
+  PlanningYear    PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id                Int                @id @default(autoincrement())
+  yearId            Int
+  code              String?
+  name              String
+  location          String?
+  description       String?
+  orgUnitId         Int?
+  managerEmployeeId Int?
+  plannedBudget     Decimal            @default(0) @db.Decimal(18, 2)
+  actualSpend       Decimal            @default(0) @db.Decimal(18, 2)
+  physicalProgress  Float              @default(0)
+  financialProgress Float              @default(0)
+  startDate         DateTime?
+  endDate           DateTime?
+  status            String             @default("planned")
+  approvalStatus    String             @default("draft")
+  projectTemplateId Int?
+  currencyid        Int?
+  Activity          Activity[]
+  Currency          Currency?          @relation(fields: [currencyid], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Employee          Employee?          @relation(fields: [managerEmployeeId], references: [id])
+  OrgUnit           OrgUnit?           @relation(fields: [orgUnitId], references: [id])
+  ProjectTemplate   ProjectTemplate?   @relation(fields: [projectTemplateId], references: [id])
+  PlanningYear      PlanningYear       @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  ProjectMilestone  ProjectMilestone[]
+
+  @@index([projectTemplateId])
+}
+
+model ProjectMilestone {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  name        String
+  plannedDate DateTime?
+  actualDate  DateTime?
+  progress    Float     @default(0)
+  status      String    @default("pending")
+  Project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Property {
+  id                Int           @id @default(autoincrement())
+  propertyNo        String?       @unique
+  name              String
+  propertyTypeId    Int?
+  orgUnitId         Int?
+  location          String?
+  area              Float?
+  ownershipStatus   String?
+  utilizationStatus String?
+  annualIncome      Decimal       @default(0) @db.Decimal(18, 2)
+  notes             String?
+  OrgUnit           OrgUnit?      @relation(fields: [orgUnitId], references: [id])
+  PropertyType      PropertyType? @relation(fields: [propertyTypeId], references: [id])
+}
+
+model PropertyType {
+  id       Int        @id @default(autoincrement())
+  name     String     @unique
+  active   Boolean    @default(true)
+  Property Property[]
+}
+
+model Report {
+  id                            Int          @id @default(autoincrement())
+  yearId                        Int
+  reportType                    String
+  periodKey                     String
+  title                         String
+  summary                       String?
+  status                        String       @default("draft")
+  submittedBy                   Int?
+  approvedBy                    Int?
+  orgUnitId                     Int?
+  createdAt                     DateTime     @default(now())
+  User_Report_approvedByToUser  User?        @relation("Report_approvedByToUser", fields: [approvedBy], references: [id])
+  OrgUnit                       OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  User_Report_submittedByToUser User?        @relation("Report_submittedByToUser", fields: [submittedBy], references: [id])
+  PlanningYear                  PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model ResearchStudy {
+  id                   Int          @id @default(autoincrement())
+  yearId               Int
+  title                String
+  objective            String?
+  responsibleOrgUnitId Int?
+  budget               Decimal      @default(0) @db.Decimal(18, 2)
+  status               String       @default("planned")
+  findings             String?
+  recommendations      String?
+  OrgUnit              OrgUnit?     @relation(fields: [responsibleOrgUnitId], references: [id])
+  PlanningYear         PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Risk {
+  id              Int           @id @default(autoincrement())
+  yearId          Int
+  orgUnitId       Int?
+  categoryId      Int?
+  title           String
+  description     String?
+  probability     Int           @default(1)
+  impact          Int           @default(1)
+  score           Int           @default(1)
+  level           String        @default("medium")
+  ownerEmployeeId Int?
+  mitigation      String?
+  status          String        @default("open")
+  reviewDate      DateTime?
+  riskTemplateId  Int?
+  RiskCategory    RiskCategory? @relation(fields: [categoryId], references: [id])
+  OrgUnit         OrgUnit?      @relation(fields: [orgUnitId], references: [id])
+  Employee        Employee?     @relation(fields: [ownerEmployeeId], references: [id])
+  RiskTemplate    RiskTemplate? @relation(fields: [riskTemplateId], references: [id])
+  PlanningYear    PlanningYear  @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  RiskReview      RiskReview[]
+
+  @@index([riskTemplateId])
+}
+
+model RiskCategory {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  description  String?
+  active       Boolean        @default(true)
+  Risk         Risk[]
+  RiskTemplate RiskTemplate[]
+
+  @@index([active])
+}
+
+model RiskReview {
+  id            Int          @id @default(autoincrement())
+  yearId        Int
+  riskId        Int
+  orgUnitId     Int?
+  reviewDate    DateTime
+  residualScore Int?
+  note          String?
+  status        String       @default("open")
+  OrgUnit       OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  Risk          Risk         @relation(fields: [riskId], references: [id], onDelete: Cascade)
+  PlanningYear  PlanningYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Role {
+  id             Int              @id @default(autoincrement())
+  code           String           @unique
+  name           String
+  description    String?
+  active         Boolean          @default(true)
+  isSystem       Boolean          @default(false)
+  RolePermission RolePermission[]
+  User           User[]
+}
+
+model RolePermission {
+  roleId   Int
+  resource String
+  actions  String[]
+  id       Int      @id @default(autoincrement())
+  Role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, resource])
+}
+
+model Session {
+  id         String   @id
+  userId     Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Setting {
+  id          Int      @id @default(autoincrement())
+  category    String
+  key         String
+  value       String?
+  valueType   String   @default("text")
+  label       String
+  description String?
+  active      Boolean  @default(true)
+  updatedBy   Int?
+  updatedAt   DateTime
+  User        User?    @relation(fields: [updatedBy], references: [id])
+
+  @@unique([category, key])
+}
+
+model Stakeholder {
+  id                 Int     @id @default(autoincrement())
+  name               String  @unique
+  category           String?
+  influence          String?
+  interest           String?
+  contact            String?
+  relationshipStatus String  @default("active")
+  notes              String?
+}
+
+model StrategicPlan {
+  id             Int              @id @default(autoincrement())
+  name           String
+  description    String?
+  startYear      Int?
+  endYear        Int?
+  status         String           @default("draft")
+  approvalStatus String           @default("draft")
+  createdAt      DateTime         @default(now())
+  StrategicTheme StrategicTheme[]
+}
+
+model StrategicResult {
+  id             Int             @id @default(autoincrement())
+  themeId        Int?
+  yearId         Int?
+  code           String?
+  name           String
+  description    String?
+  Goal           Goal[]
+  StrategicTheme StrategicTheme? @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  PlanningYear   PlanningYear?   @relation(fields: [yearId], references: [id])
+}
+
+model StrategicTheme {
+  id              Int               @id @default(autoincrement())
+  planId          Int?
+  code            String?
+  name            String
+  description     String?
+  active          Boolean           @default(true)
+  StrategicResult StrategicResult[]
+  StrategicPlan   StrategicPlan?    @relation(fields: [planId], references: [id])
+}
+
+model TaskUpdate {
+  id          Int      @id @default(autoincrement())
+  activityId  Int
+  updateDate  DateTime
+  progress    Float    @default(0)
+  note        String?
+  submittedBy Int?
+  evidence    String?
+  Activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  User        User?    @relation(fields: [submittedBy], references: [id])
+}
+
+model TourismCategory {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique
+  active        Boolean         @default(true)
+  TourismRecord TourismRecord[]
+}
+
+model TourismRecord {
+  id                    Int              @id @default(autoincrement())
+  yearId                Int
+  branchOrgUnitId       Int?
+  categoryId            Int?
+  recordDate            DateTime
+  domesticVisitors      Int              @default(0)
+  internationalVisitors Int              @default(0)
+  roomNightsAvailable   Int              @default(0)
+  roomNightsOccupied    Int              @default(0)
+  revenue               Decimal          @default(0) @db.Decimal(18, 2)
+  satisfaction          Float            @default(0)
+  stayHours             Float            @default(0)
+  notes                 String?
+  OrgUnit               OrgUnit?         @relation(fields: [branchOrgUnitId], references: [id])
+  TourismCategory       TourismCategory? @relation(fields: [categoryId], references: [id])
+  PlanningYear          PlanningYear     @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@index([recordDate, branchOrgUnitId])
+}
+
+model Training {
+  id                  Int                   @id @default(autoincrement())
+  yearId              Int
+  orgUnitId           Int?
+  title               String
+  provider            String?
+  plannedDate         DateTime?
+  participantsTarget  Int                   @default(0)
+  participantsActual  Int                   @default(0)
+  budget              Decimal               @default(0) @db.Decimal(18, 2)
+  status              String                @default("planned")
+  OrgUnit             OrgUnit?              @relation(fields: [orgUnitId], references: [id])
+  PlanningYear        PlanningYear          @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  TrainingParticipant TrainingParticipant[]
+}
+
+model TrainingParticipant {
+  trainingId Int
+  employeeId Int
+  status     String   @default("registered")
+  Employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  Training   Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  @@id([trainingId, employeeId])
+}
+
+model User {
+  id                                    Int                  @id @default(autoincrement())
+  username                              String               @unique
+  passwordHash                          String
+  fullName                              String
+  email                                 String?
+  phone                                 String?
+  roleId                                Int
+  primaryOrgUnitId                      Int?
+  employeeId                            Int?                 @unique
+  active                                Boolean              @default(true)
+  createdAt                             DateTime             @default(now())
+  AnnualPlanRevision                    AnnualPlanRevision[]
+  Approval_Approval_decidedByToUser     Approval[]           @relation("Approval_decidedByToUser")
+  Approval_Approval_requestedByToUser   Approval[]           @relation("Approval_requestedByToUser")
+  Attachment                            Attachment[]
+  AuditLog                              AuditLog[]
+  BudgetRequest                         BudgetRequest[]
+  DataImportJob                         DataImportJob[]
+  EmployeeEvaluation                    EmployeeEvaluation[]
+  FinanceEntry                          FinanceEntry[]
+  KpiActual_KpiActual_submittedByToUser KpiActual[]          @relation("KpiActual_submittedByToUser")
+  KpiActual_KpiActual_verifiedByToUser  KpiActual[]          @relation("KpiActual_verifiedByToUser")
+   ManagementAction                      ManagementAction[]
+   ManagementReview                      ManagementReview[]
+   ReviewDecisionAsAssignee              ReviewDecision[]
+   ReviewActionAsResponsiblePerson       ReviewAction[]
+   ManagerAssignment                     ManagerAssignment[]
+  Plan_Plan_approvedByToUser            Plan[]               @relation("Plan_approvedByToUser")
+  Plan_Plan_archivedByToUser            Plan[]               @relation("Plan_archivedByToUser")
+  Plan_Plan_closedByToUser              Plan[]               @relation("Plan_closedByToUser")
+  Plan_Plan_ownerIdToUser               Plan[]               @relation("Plan_ownerIdToUser")
+  Plan_Plan_submittedByToUser           Plan[]               @relation("Plan_submittedByToUser")
+  PlanVersion                           PlanVersion[]
+  Procurement                           Procurement[]
+  Report_Report_approvedByToUser        Report[]             @relation("Report_approvedByToUser")
+  Report_Report_submittedByToUser       Report[]             @relation("Report_submittedByToUser")
+  Session                               Session[]
+  Setting                               Setting[]
+   SourceReference                         SourceReference[]
+   TaskUpdate                            TaskUpdate[]
+  Employee                              Employee?            @relation(fields: [employeeId], references: [id])
+  OrgUnit                               OrgUnit?             @relation(fields: [primaryOrgUnitId], references: [id])
+  Role                                  Role                 @relation(fields: [roleId], references: [id])
+  UserModuleAccess                      UserModuleAccess[]
+}
+
+model UserModuleAccess {
+  userId Int
+  module String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, module])
+}
+
+model BudgetCategory {
+  id          Int     @id @default(autoincrement())
+  code        String?
+  name        String
+  description String?
+  active      Boolean @default(true)
+}
+
+model FundingSource {
+  id          Int     @id @default(autoincrement())
+  code        String? @unique
+  name        String
+  type        String  @default("government")
+  description String?
+  active      Boolean @default(true)
+
+  @@index([active])
+}
+
+model RolloverJob {
+  id            Int            @id @default(autoincrement())
+  sourceYearId  Int
+  targetYearId  Int
+  status        String         @default("preview")
+  mode          String         @default("all")
+  selection     Json?
+  preview       Json?
+  summary       Json?
+  createdBy     Int?
+  createdByName String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  cancelledAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         RolloverItem[]
+  sourceYear    PlanningYear   @relation("RolloverJob_sourceYearIdToPlanningYear", fields: [sourceYearId], references: [id])
+  targetYear    PlanningYear   @relation("RolloverJob_targetYearIdToPlanningYear", fields: [targetYearId], references: [id])
+
+  @@unique([sourceYearId, targetYearId, mode])
+  @@index([sourceYearId])
+  @@index([targetYearId])
+  @@index([status])
+}
+
+model RolloverItem {
+  id           Int         @id @default(autoincrement())
+  jobId        Int
+  itemKey      String
+  sourceId     Int
+  targetId     Int?
+  sourceYearId Int
+  targetYearId Int
+  status       String      @default("pending")
+  copiedData   Json?
+  error        String?
+  copiedAt     DateTime?
+  RolloverJob  RolloverJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, itemKey, sourceId])
+  @@unique([sourceYearId, targetYearId, itemKey, sourceId])
+  @@index([itemKey])
+  @@index([sourceYearId, targetYearId])
+}
+
+model KpiTemplate {
+  id         Int          @id @default(autoincrement())
+  code       String       @unique
+  name       String
+  area       String?
+  definition String?
+  formula    String?
+  unit       String?
+  frequency  String       @default("quarterly")
+  direction  String       @default("higher_is_better")
+  categoryId Int?
+  active     Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  kpiPlans   KpiPlan[]
+  category   KpiCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([active])
+  @@index([categoryId])
+}
+
+model WorkPlan {
+  id             Int          @id @default(autoincrement())
+  yearId         Int
+  orgUnitId      Int?
+  ownerId        Int?
+  name           String
+  description    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String       @default("draft")
+  approvalStatus String       @default("draft")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  createdBy      Int?
+  updatedBy      Int?
+  Activity       Activity[]
+  OrgUnit        OrgUnit?     @relation(fields: [orgUnitId], references: [id])
+  PlanningYear   PlanningYear @relation(fields: [yearId], references: [id])
+
+  @@index([yearId])
+  @@index([orgUnitId])
+  @@index([ownerId])
+}
+
+model SubTask {
+  id            Int       @id @default(autoincrement())
+  activityId    Int
+  title         String
+  description   String?
+  employeeId    Int?
+  startDate     DateTime?
+  endDate       DateTime?
+  progress      Float     @default(0)
+  status        String    @default("pending")
+  orderIndex    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  completedDate DateTime?
+  Activity      Activity  @relation(fields: [activityId], references: [id])
+  Employee      Employee? @relation(fields: [employeeId], references: [id])
+
+  @@index([activityId])
+  @@index([employeeId])
+}
+
+model Deliverable {
+  id            Int       @id @default(autoincrement())
+  activityId    Int
+  title         String
+  description   String?
+  dueDate       DateTime?
+  completedDate DateTime?
+  status        String    @default("pending")
+  evidence      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  Activity      Activity  @relation(fields: [activityId], references: [id])
+
+  @@index([activityId])
+}
+
+model ActivityTemplate {
+  id              Int        @id @default(autoincrement())
+  code            String     @unique
+  name            String
+  description     String?
+  category        String?
+  defaultDuration Int?
+  defaultCost     Decimal?   @db.Decimal(18, 2)
+  unit            String?
+  priority        String     @default("medium")
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  Activity        Activity[]
+
+  @@index([active])
+  @@index([category])
+}
+
+model ProjectTemplate {
+  id              Int       @id @default(autoincrement())
+  code            String    @unique
+  name            String
+  description     String?
+  category        String?
+  defaultBudget   Decimal?  @db.Decimal(18, 2)
+  defaultDuration Int?
+  priority        String    @default("medium")
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  projects        Project[]
+
+  @@index([active])
+  @@index([category])
+}
+
+model RiskTemplate {
+  id             Int           @id @default(autoincrement())
+  code           String        @unique
+  name           String
+  description    String?
+  categoryId     Int?
+  likelihood     String        @default("medium")
+  impact         String        @default("medium")
+  mitigationPlan String?
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  risks          Risk[]
+  category       RiskCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([active])
+  @@index([categoryId])
+}
+
+model ComplianceTemplate {
+  id             Int                     @id @default(autoincrement())
+  code           String                  @unique
+  title          String
+  description    String?
+  category       String?
+  authority      String?
+  defaultDueDays Int?
+  priority       String                  @default("medium")
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  requirements   ComplianceRequirement[]
+
+  @@index([active])
+  @@index([category])
+}
+
+model ReportTemplate {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  reportType  String
+  description String?
+  frequency   String   @default("quarterly")
+  structure   Json?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+  @@index([reportType])
+}
+
+model WorkPlanTemplate {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  structure   Json?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+}
+
+model OrgStructureTemplate {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  structure   Json
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+}
+
+model DataImportJob {
+  id          Int       @id @default(autoincrement())
+  entityType  String
+  fileName    String
+  totalRows   Int       @default(0)
+  successRows Int       @default(0)
+  failedRows  Int       @default(0)
+  status      String    @default("pending")
+  errors      Json?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdBy   Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User?     @relation(fields: [createdBy], references: [id])
+
+  @@index([entityType])
+  @@index([status])
+  @@index([createdBy])
+}
+
+model CurrencyRate {
+  id                                             Int      @id @default(autoincrement())
+  fromcurrencyid                                 Int
+  tocurrencyid                                   Int
+  rate                                           Decimal  @default(1) @db.Decimal(18, 6)
+  effectivedate                                  DateTime @default(now()) @db.Timestamp(6)
+  createdat                                      DateTime @default(now()) @db.Timestamp(6)
+  updatedat                                      DateTime @default(now()) @db.Timestamp(6)
+  Currency_CurrencyRate_fromcurrencyidToCurrency Currency @relation("CurrencyRate_fromcurrencyidToCurrency", fields: [fromcurrencyid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Currency_CurrencyRate_tocurrencyidToCurrency   Currency @relation("CurrencyRate_tocurrencyidToCurrency", fields: [tocurrencyid], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([fromcurrencyid, tocurrencyid, effectivedate])
+}
+
+model FocusArea {
+  id               Int              @id @default(autoincrement())
+  code             String           @unique @db.VarChar(20)
+  name             String           @db.VarChar(100)
+  description      String?
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  BranchFocusArea  BranchFocusArea[]
+}
+
+model BranchFocusArea {
+  id           Int      @id @default(autoincrement())
+  orgUnitId    Int
+  focusAreaId  Int
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  FocusArea    FocusArea @relation(fields: [focusAreaId], references: [id], onDelete: Cascade)
+  OrgUnit      OrgUnit   @relation("BranchFocusAreas", fields: [orgUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([orgUnitId, focusAreaId])
+}
+
+model SourceReference {
+  id            Int      @id @default(autoincrement())
+  entityType    String
+  entityId      Int
+  sourceDocument String
+  sourceSection String?
+  sourcePage    String?
+  sourceNote    String?
+  importedAt    DateTime @default(now())
+  importedBy    Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  User          User?    @relation(fields: [importedBy], references: [id])
+
+  @@unique([entityType, entityId, sourceSection])
+}

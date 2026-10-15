@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PlanningYear {
+  id        Int      @id @default(autoincrement())
+  year      Int      @unique
+  label     String
+  status    String   @default("draft")
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  goals     Goal[]
+  objectives Objective[]
+  kpiPlans  KpiPlan[]
+  projects  Project[]
+  activities Activity[]
+  allocations AnnualPlanAllocation[]
+  budgets   Budget[]
+  budgetRequests BudgetRequest[] @relation("BudgetRequestYear")
+  financeEntries FinanceEntry[]
+  employeePlans EmployeePlan[]
+  evaluations Evaluation[]
+  employeeEvaluations EmployeeEvaluation[]
+  monitoringVisits MonitoringVisit[]
+  risks Risk[]
+  riskReviews RiskReview[]
+  complianceRequirements ComplianceRequirement[]
+  correctiveActions CorrectiveAction[]
+  managementActions ManagementAction[]
+  audits Audit[]
+  procurements Procurement[]
+  hrActions HrAction[]
+  trainings Training[]
+  tourismRecords TourismRecord[]
+  legalMatters LegalMatter[]
+  researchStudies ResearchStudy[]
+  reports Report[]
+  plans       Plan[]
+  yearConfig  PlanningYearConfig?
+  approvals Approval[]
+  periodDefinitions PeriodDefinition[]
+  strategicResults StrategicResult[]
+  annualPlanRevisions AnnualPlanRevision[]
+  annualTargets AnnualTarget[]
+  hierarchyLinks StrategicHierarchyLink[]
+}

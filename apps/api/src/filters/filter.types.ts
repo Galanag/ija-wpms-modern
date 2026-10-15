@@ -1,0 +1,1 @@
+export type GlobalFilters={yearId?:number;divisionId?:number;sectorId?:number;directorateId?:number;departmentId?:number;branchId?:number;teamId?:number;quarter?:string;month?:string;week?:string;fromDate?:string;toDate?:string;status?:string;categoryId?:number;employeeId?:number;projectId?:number;kpiId?:number;search?:string;page?:number;pageSize?:number};

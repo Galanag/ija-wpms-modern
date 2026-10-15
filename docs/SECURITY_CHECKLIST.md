@@ -1,0 +1,23 @@
+# Security Checklist
+
+- [ ] HTTPS in production
+- [ ] Long random SESSION_SECRET
+- [ ] HttpOnly, SameSite cookies
+- [ ] Secure cookies behind HTTPS
+- [ ] CSRF for state-changing requests
+- [ ] Rate limit login
+- [ ] Argon2 password hashing
+- [x] Server-side RBAC (Stage 12: GovernanceModule / GovernanceService.hasPermission)
+- [x] Module authorization (Stage 12: per-resource action grants)
+- [ ] Organization scope authorization
+- [x] Stored-record IDOR checks (Stage 12: record loaded before approve/reject)
+- [x] Export authorization (Stage 12: export action grant)
+- [ ] Attachment authorization
+- [ ] Upload MIME/size/path checks
+- [x] Separation of duties (Stage 12: no self-approval of own submissions)
+- [x] Closed-year protection (Stage 12: checkYearProtection)
+- [x] Audit all material mutations (Stage 12: AuditLog + audit endpoints)
+- [ ] Audit trail immutability (no update/delete path exposed on AuditLog)
+- [ ] No secrets committed
+- [ ] PostgreSQL least-privilege user
+- [ ] Production backups tested

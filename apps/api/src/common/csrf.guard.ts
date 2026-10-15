@@ -1,0 +1,2 @@
+import {CanActivate,ExecutionContext,ForbiddenException,Injectable} from '@nestjs/common';import {FastifyRequest} from 'fastify';
+@Injectable() export class CsrfGuard implements CanActivate{async canActivate(ctx:ExecutionContext){const req=ctx.switchToHttp().getRequest<FastifyRequest>();if(['GET','HEAD','OPTIONS'].includes(req.method))return true;const cookie=(req.cookies as any)?.ija_csrf;const header=req.headers['x-csrf-token'];if(!cookie||!header||cookie!==header)throw new ForbiddenException('Invalid or missing CSRF token');return true;}}

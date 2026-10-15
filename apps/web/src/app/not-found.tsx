@@ -1,0 +1,1 @@
+export default function NotFound(){return <main className="grid min-h-screen place-items-center p-8"><div><h1 className="text-3xl font-bold">Page not found</h1><p className="mt-2 text-gray-600">Return to the IJA-WPMS workspace.</p></div></main>}

@@ -1,0 +1,4 @@
+SET
+id,category,key,value,valueType,label,description,active,updatedBy,updatedAt
+1,system,organization_name,IJA Developer,text,Organization Name,,t,,2026-10-13 05:41:06.171
+2,system,default_planning_year_id,9,integer,Default Planning Year,The PlanningYear ID used as default when no explicit selection is made,t,,2026-10-13 05:41:06.174

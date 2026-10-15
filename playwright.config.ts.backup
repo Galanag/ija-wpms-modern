@@ -1,0 +1,2 @@
+import {defineConfig,devices} from '@playwright/test';
+export default defineConfig({testDir:'./tests/e2e',timeout:120_000,workers:1,use:{baseURL:'http://localhost:3001',trace:'retain-on-failure'},webServer:[{command:'pnpm --filter @ija/api start:dev',url:'http://localhost:4000/api/v1/health',reuseExistingServer:true},{command:'pnpm --filter @ija/web dev',url:'http://localhost:3001',reuseExistingServer:true}],projects:[{name:'chromium',use:{...devices['Desktop Chrome']}}]});

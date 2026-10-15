@@ -1,0 +1,5 @@
+import React,{ButtonHTMLAttributes,InputHTMLAttributes,ReactNode,SelectHTMLAttributes} from 'react';
+export function Button({children,className='',...p}:{children:ReactNode}&ButtonHTMLAttributes<HTMLButtonElement>){return <button className={`rounded-lg bg-[#1f5d3f] px-3 py-2 text-sm font-semibold text-white ${className}`} {...p}>{children}</button>}
+export function Input(p:InputHTMLAttributes<HTMLInputElement>){return <input {...p} className={`w-full rounded-lg border border-[#ddd8ca] bg-white px-3 py-2 ${p.className||''}`}/>}
+export function Select({children,...p}:SelectHTMLAttributes<HTMLSelectElement>){return <select {...p} className={`w-full rounded-lg border border-[#ddd8ca] bg-white px-3 py-2 ${p.className||''}`}>{children}</select>}
+export function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){return <div className="fixed inset-0 grid place-items-center bg-black/40 p-4"><div className="w-full max-w-2xl rounded-2xl bg-white p-5"><header className="flex items-center justify-between"><h2>{title}</h2><button type="button" onClick={onClose}>✕</button></header>{children}</div></div>}
